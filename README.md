@@ -3,9 +3,8 @@
 A bounded, generic, thread-safe **Least-Recently-Used** cache with **per-entry TTL**, built
 from scratch on:
 
-- a **custom intrusive doubly-linked list** (sentinel head/tail) for O(1) recency reordering —
-  deliberately *not* `java.util.LinkedHashMap`;
-- a **`ConcurrentHashMap`** for O(1) key lookup; and
+- a **custom intrusive doubly-linked list** (sentinel head/tail) for O(1) recency reordering
+- a **`ConcurrentHashMap`** for O(1) key lookup
 - a single **`ReentrantReadWriteLock`** guarding the linked-list ordering and eviction
   invariants.
 
@@ -20,23 +19,6 @@ from scratch on:
 Because the read methods take only a *shared* read lock, any number of threads can read
 simultaneously, whereas `Collections.synchronizedMap(...)` serializes **every** operation behind
 one monitor.
-
-### An honest caveat the benchmark makes explicit
-
-The shared-read-lock advantage is **not** free, and it does **not** show up for a bare map
-lookup. A `ReentrantReadWriteLock` read acquisition CASes a shared internal counter, so under
-contention many readers bounce that cache line; for a nanosecond-scale critical section this
-overhead is larger than an (uncontended/biased) monitor's. The benchmark therefore reports two
-sub-results:
-
-- **2a — bare lookup (`work=0`):** the read lock is actually *slower* (~0.5x). This is expected
-  and correct; a read/write lock is the wrong tool when the read does almost nothing.
-- **2b — realistic read (`work=250`):** once each read does even sub-microsecond real work on the
-  value under the lock (validation, deserialization, computing a view — modeled by `read(k, fn)`),
-  the read lock lets all threads proceed in parallel and beats the monitor by **~5–6x**.
-
-Demonstrating *when* a read/write lock helps — and when it hurts — is the point, and is more
-defensible than a single cherry-picked number.
 
 ## API
 
